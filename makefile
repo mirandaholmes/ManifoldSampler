@@ -1,7 +1,8 @@
 CC=g++ -std=gnu++11 
 
 #PROGRAM = examplepolymer
-PROGRAM = example1
+#PROGRAM = example1
+PROGRAM = example2
 
 OPTFLAGS =   -O3
 EXECUTABLE=./$(PROGRAM) 

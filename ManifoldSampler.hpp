@@ -94,7 +94,7 @@ public:
                    VectorXd x0,
     	           double sigtan0, 
                    double tol0 = 1e-6,
- 	               int maxIter0 = 50);
+ 	               int maxIter0 = 100);
 
     // Sampling functions
     double sample(int npts=1, int dsave=1);   // the main sampling function
