@@ -15,8 +15,11 @@
 #include <iomanip>    // for setting precision
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include "Framework.hpp"
+#include "Equations.hpp"
 #include "ManifoldSampler.hpp"
+
+#include "Framework.hpp"
+
 
 using namespace Eigen;
 using namespace std;
@@ -25,18 +28,6 @@ using namespace std::placeholders;  // for binding functions
 #define PI  3.141592653589793238462643383279502884
 
 
-
-
-// different ways to define your own energy function here, if desired
-// already defined, in EnergyFunctions
-double EnergyFunctions::energy(const VectorXd& x, const Framework& myframe) { 
-    return 1.0; 
-}
-
-// write your own function, with the right type
-double myenergy(const VectorXd& x, const Framework& myframe) { 
-    return 1.0; 
-}
 
 
 
@@ -85,59 +76,57 @@ int main(int argc,char *argv[])
     cout << "You constructed a Framework object with lengths =\n  " << myframework.lengths.transpose() << endl;
 
 
-    /* Set up the sampler */
+    /* Set up Equations */
+    Equations myeqns;
+    myeqns.nvars = myframework.nvars;
+    myeqns.neqns = myframework.m;
+    myeqns.eval_q = std::bind(&Framework::eval_q, myframework,_1, _2);
+    myeqns.eval_Dq = std::bind(&Framework::eval_Dq, myframework,_1,_2);
 
+    // Optionally bind to other functions
+    //myeqns.energy = std::bind(&EnergyFunctions::unit_fcn,_1);
+    //myeqns.evalstats = std::bind(&StatisticsFunctions::nostats,_1);  // turn off statistics; don't save anything
+
+
+    /* Set up Sampler */
     // Sampler parameters
-    int npts = 5e2;       // how many points to generate
+    int npts = 1e2;       // how many points to generate
     double sig = 0.3;    // step size
     double tol = 1e-5;    // tolerance for Newton's method   (optional)
     int maxIter = 40;     // max no. of iterations for Newton's method (optional)
     int dsave = 1;        // how often to save statistics (optional; default = 1)
 
 
-    // Create a sampler object
-    ManifoldSampler mysampler(myframework,x0,sig,tol,maxIter);
+    /* Create a sampler object */
+    ManifoldSampler mysampler(myeqns,x0,sig,tol,maxIter);
 
 
-    // print sparsities
-    cout << "sparsities: " << mysampler.sparsity().transpose() << endl;
-
-    // Change the statistics that are saved
-    mysampler.statsfcn = &StatisticsFunctions::pts;  // saves all points
-
-
-    // Some optional things to change
+    /* Some optional things to change */
     // Change projection method
-          mysampler.projmethod = ManifoldSampler::cProjNewton;
-          //mysampler.projmethod = ManifoldSampler::cProjSym;
+    mysampler.projmethod = ManifoldSampler::cProjNewton;
+    //mysampler.projmethod = ManifoldSampler::cProjSym;
 
     // Set the seed to a particular value, for reproducibility. Default device noise.
-          //mysampler.setSeed(10012);   // here the seed is set to 10012.
+    //mysampler.setSeed(10012);   // here the seed is set to 10012.
 
     // include debug comments, or not (default = No)
-          //mysampler.ifdebug = ManifoldSampler::cYes; 
-
-    // Change energy function, if desired. 
-    // Two examples here; one with no parameters, another with parameters, that must be bound to have the right type.
-          mysampler.ffcn = &myenergy;  // a function defined in code above 
-          //mysampler.ffcn = &EnergyFunctions::energy;  // a function defined in code above (could be below)
-          //double kspring = 10;
-          //mysampler.ffcn = bind(EnergyFunctions::bendingPolymer, _1, _2, kspring); // bending energy. You can write your own energy function. 
-
+    //mysampler.ifdebug = ManifoldSampler::cYes; 
    
-    // Sample!
+
+    /* Sample! */
     mysampler.sample(npts,dsave);
 
 
-    // Write diagnostics to screen
+    /* Write diagnostics to screen */
     cout << "Done! " << endl;
+    cout << "sparsities: " << mysampler.sparsity().transpose() << endl;
     cout << "  This run took " << mysampler.time << " seconds" << endl;
     cout << "  Average acceptance ratio = " << mysampler.rej.acc_avg() << endl;
     cout << "  Average no. iterations in Projection method = " 
          << mysampler.niteravg() << endl;
     cout << "     Avg no. iterations (successful)    =  "  << mysampler.niteravg(1) << endl;
     cout << "     Avg no. iterations (unsuccessful)  =  "  << mysampler.niteravg(-1) << endl;
-
+    
 
     // Write rejection statistics to screen
     mysampler.print_rej();
@@ -146,7 +135,7 @@ int main(int argc,char *argv[])
     mysampler.print_time();   
 
     // Write statistics to file
-    mysampler.write_stats("example1.txt");
+    mysampler.write_stats("Data/example1.txt");
 
     // How to print out / access internal data (uncomment only when npts is small!)
     //cout << "  stats = \n" << mysampler.stats << endl;  // statistics
