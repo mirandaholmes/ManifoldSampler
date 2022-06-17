@@ -22,10 +22,12 @@
 #include <iomanip>           // for setw
 #include <fstream>           // for writing to files
 #include <chrono>   // for high-precision timing
-#include "Framework.hpp"
+
+#include "Equations.hpp"
 
 using namespace std;
 using namespace Eigen;
+
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -40,10 +42,6 @@ typedef SparseLU<SpMat, COLAMD> NewtonFac;    // Solver for Newton step (faster 
 typedef SimplicialLLT<SpMat, Eigen::Lower, MyOrdering> Cholesky;  // Cholesky decomposition; for computing tangent steps
 //typedef SimplicialLDLT<SpMat, Eigen::Lower, MyOrdering> Cholesky;  // Cholesky decomposition; alternative version
 
-
-// aliases for energy functions and statistics function
-using EnergyFcn = std::function<double(const VectorXd&, const Framework&)>; // type alias to std::function
-using StatsFcn  = std::function<VectorXd(const VectorXd&, const Framework&)>; // type alias to std::function
 
 
 // Class to hold rejection statistics for different kinds of rejections
@@ -75,31 +73,13 @@ public:
 
 
 
-// Struct to hold Energy functions, so the user doesn't have to rewrite them
-// All of these should have type "EnergyFcn", 
-// OR have extra parameters so that using "bind" we obtain an EnergyFcn. 
-// Each energy function returns an "energy" U; the probability we wish to sample is exp(-U). 
-struct EnergyFunctions {
-      static double unit_fcn(const VectorXd& x, const Framework& myframe) { return 0.0; }
-      static double bendingPolymer(const VectorXd& x, const Framework& myframe, const double springconst);
-      static double energy(const VectorXd& x, const Framework& myframe);   // use this to define your own energy function
-};
-
-// Struct to hold various statistics functions, so the user doesn't have to rewrite them
-// All of these should have type "StatsFcn", 
-// OR have extra parameters so that using "bind" we obtain a StatsFcn.
-struct StatisticsFunctions {
-    static VectorXd pts(const VectorXd& x, const Framework& myframe) { return x; };  // default statistics; =points
-    static VectorXd nostats(const VectorXd& x, const Framework& frame) { 
-            VectorXd data; data.resize(0); return data; }
-};
 
 
 class ManifoldSampler {
 public:
 
     // Sampling parameters
-    Framework frame;    // framework to sample
+    Equations eqns;    // Equations to sample
     VectorXd x0;        // initial point
     double sig;         // step size in tangent direction
     double tol;         // tolerance for constraints holding
@@ -107,19 +87,17 @@ public:
     double errfac = 0.95;      // how much qerr must decrease by each iteration of Newton / Symmetric Newton
     int seed = 0;       // seed for rng; 0 = based on device noise
     int projmethod = cProjSym;  // which projection method
-    EnergyFcn ffcn { &EnergyFunctions::unit_fcn } ;  // energy function to sample on framework (default = 0)
-    StatsFcn statsfcn { &StatisticsFunctions::pts }; // statistics to compute on framework (default = x)
 
 
     // Constructor
-    ManifoldSampler(Framework frame0, 
+    ManifoldSampler(Equations& eqns0, 
                    VectorXd x0,
     	           double sigtan0, 
                    double tol0 = 1e-6,
- 	               int maxIter0 = 40);
+ 	               int maxIter0 = 50);
 
     // Sampling functions
-    int sample(int npts=1, int dsave=1);   // the main sampling function
+    double sample(int npts=1, int dsave=1);   // the main sampling function
     int project_newton(const VectorXd&, const SpMat&, VectorXd&, SpMat&, NewtonFac&);  // project to manifold
     int project_symmetric(const VectorXd&, const SpMat&, VectorXd&, Cholesky&);  // doesn't update Jacobian
     

@@ -14,12 +14,12 @@
 
 
 // Constructor
-ManifoldSampler::ManifoldSampler(Framework frame0, 
+ManifoldSampler::ManifoldSampler(Equations& eqns0, 
                    VectorXd x0,
     	           double sig0, 
                    double tol0,
  	               int maxIter0)
-: frame(frame0), x0(x0), sig(sig0), 
+: eqns(eqns0), x0(x0), sig(sig0), 
   tol(tol0), maxIter(maxIter0), 
   mZdist(0.,1.), mUdist(0.0,1.0)
 {
@@ -42,13 +42,11 @@ ManifoldSampler::ManifoldSampler(Framework frame0,
 //      x0 = last point sampled
 //
 // 
-int ManifoldSampler::sample(int npts, int dsave) {
+double ManifoldSampler::sample(int npts, int dsave) {
 
-	// extract framework info, for ease of reference
-	int n = frame.n;    // number of vertices
-	int d = frame.d;    // dimension of ambient space
-	int m = frame.m;    // number of edges
-	int nvars = n*d;
+	// extract equations info, for ease of reference
+	int m = eqns.neqns;    // number of constraints
+	int nvars = eqns.nvars;    // number of variables
 
     // Variables needed in code
     SpMat Dq1, Dq2, Dqxrev;              // Jacobians, at x, y, and for reverse move
@@ -68,8 +66,8 @@ int ManifoldSampler::sample(int npts, int dsave) {
 
     // Construct initial Dqx, energy
     x = x0;
-    frame.eval_Dq(x,Dq1);
-    ux = ffcn(x,frame);
+    eqns.eval_Dq(x,Dq1);
+    ux = eqns.energy(x);
 
 
     // Construct initial Cholesky objects, and perform initial analysis 
@@ -95,7 +93,7 @@ int ManifoldSampler::sample(int npts, int dsave) {
 
     // Initialize matrices to hold data
     nsave = floor(npts / dsave) + 1;
-    nstats = statsfcn(x,frame).size();   // how many statistics to calculate
+    nstats = eqns.evalstats(x).size();   // how many statistics to calculate
     if(npts%dsave==0) nsave--; 
     stats = MatrixXd::Zero(nsave,nstats);
     int ipt = 0;
@@ -109,7 +107,7 @@ int ManifoldSampler::sample(int npts, int dsave) {
 
     	// =============  Save data  =============
         if(i%dsave==0 && nstats >0) {
-            stats.row(ipt) = statsfcn(x,frame);
+            stats.row(ipt) = eqns.evalstats(x);
             ipt++;
         }
 
@@ -124,6 +122,7 @@ int ManifoldSampler::sample(int npts, int dsave) {
         // TEST -- compare ninter for different projection methods (uncomment to test)
         //cout << setw(6) << project_newton(x+vtan,*pDqx,y,*pDqy,newtonfac);
         //cout << setw(6) << project_symmetric(x+vtan,*pDqx,y,*pcholx) << endl;
+
 
     	// =============  Take step & project  =============
         if(projmethod == cProjNewton) {
@@ -157,7 +156,7 @@ int ManifoldSampler::sample(int npts, int dsave) {
 
 
         // =============  Get reverse tangent step  =============
-        if(projmethod == cProjSym) frame.eval_Dq(y,*pDqy);  // evaluate Dqy
+        if(projmethod == cProjSym) eqns.eval_Dq(y,*pDqy);  // evaluate Dqy
         (*pcholy).factorize((*pDqy).transpose()*(*pDqy));    // cholesky decomposition, with values
         r = x-y;
         z1 = (*pcholy).solve((*pDqy).transpose()*r);
@@ -166,7 +165,7 @@ int ManifoldSampler::sample(int npts, int dsave) {
 
     	// =============  Metropolis step  =============
         vdiff = 0.5*( vtany.squaredNorm()/(sig*sig) - vtan.squaredNorm()/(sig*sig));
-        uy = ffcn(y,frame);
+        uy = eqns.energy(y);
         udiff = uy-ux;   // energy difference
         cholesky_diagonal((*pcholy), diagy);  // sets diagy. Replaces: qy = sqrt(chol2.determinant());  
     	qdet_yx = (diagy.cwiseQuotient(diagx)).array().prod();
@@ -262,13 +261,13 @@ int ManifoldSampler::project_newton(const VectorXd& z, const SpMat& Qx, VectorXd
     // Initial guess; all 0's
     a.setZero();   
     y = z + Qx*a;
-    frame.eval_Dq(y,Qy);
+    eqns.eval_Dq(y,Qy);
     qerr = std::numeric_limits<double>::infinity();;
 
     // Loop until get close enough to a solution
     for(int iter=0; iter < maxIter; iter++) {
         // evaluate q
-        frame.eval_q(y,q);
+        eqns.eval_q(y,q);
         qerr0 = qerr;       // save old value, to test if it decreases
         qerr = q.cwiseAbs().maxCoeff();  // maximum error, pointwise
 
@@ -283,7 +282,7 @@ int ManifoldSampler::project_newton(const VectorXd& z, const SpMat& Qx, VectorXd
         }
 
         // Otherwise, evaluate Jacobian and solve for increment
-        frame.eval_Dq(y,Qy);
+        eqns.eval_Dq(y,Qy);
         projsolver.factorize(Qy.transpose()*Qx);
         da = projsolver.solve(-q);
         a = a + da;
@@ -317,7 +316,7 @@ int ManifoldSampler::project_symmetric(const VectorXd& z, const SpMat& Qx, Vecto
     // Loop until get close enough to a solution
     for(int iter=0; iter < maxIter; iter++) {
         // evaluate q
-        frame.eval_q(y,q);
+        eqns.eval_q(y,q);
         qerr0 = qerr;       // save old value, to test if it decreases
         qerr = q.cwiseAbs().maxCoeff();  // maximum error, pointwise
 
@@ -356,7 +355,7 @@ int ManifoldSampler::project_symmetric(const VectorXd& z, const SpMat& Qx, Vecto
 int ManifoldSampler::find_point_on_manifold(const VectorXd& x0, VectorXd& x) {
     int flag;
     SpMat Dq,Dqy;
-    frame.eval_Dq(x0,Dq);
+    eqns.eval_Dq(x0,Dq);
     NewtonFac projsolver;
     projsolver.analyzePattern(Dq.transpose()*Dq);
     flag = project_newton(x0, Dq, x, Dqy, projsolver);
@@ -369,11 +368,11 @@ int ManifoldSampler::find_point_on_manifold(const VectorXd& x0, VectorXd& x) {
 //
 void ManifoldSampler::steepestDescent(const VectorXd& x0, VectorXd& x, double s, int nsteps) {
     SpMat Dq;
-    VectorXd q(frame.m);
+    VectorXd q(eqns.neqns);
     x = x0;
     for(int i=0; i<nsteps; i++) {
-        frame.eval_q(x,q);
-        frame.eval_Dq(x,Dq);
+        eqns.eval_q(x,q);
+        eqns.eval_Dq(x,Dq);
         x = x - s*Dq*q;
     }
 }
@@ -414,7 +413,7 @@ void ManifoldSampler::cholesky_diagonal(const SimplicialLDLT<SpMat, Eigen::Lower
 VectorXd ManifoldSampler::sparsity(void) {
     SpMat Dq;
     Cholesky chol;
-    frame.eval_Dq(x0,Dq);
+    eqns.eval_Dq(x0,Dq);
     chol.analyzePattern(Dq.transpose()*Dq);
     chol.factorize(Dq.transpose()*Dq);
     SparseMatrix<double,RowMajor> Lr = chol.matrixL();  // row-major, sorted
@@ -559,38 +558,6 @@ void ManifoldSampler::setSeed(int seed0) {
 	initializeRandom();
 }
 
-
-
-
-// ====================================================
-//           Energy Functions
-// ====================================================
-
-// Bending energy of a polymer
-// Energy is
-//    \sum_i k*(1-cos(theta_i))
-// where i is the ith joint
-// 
-double EnergyFunctions::bendingPolymer(const VectorXd& x, const Framework& myframe, const double springconst) {
-    
-    int n = myframe.n;
-    int d = myframe.d;
-    double cth, d1,d2;
-    double U = 0;
-    for(int i=0; i < n-2; i++) {
-        cth = 0;
-        d1 = 0;
-        d2 = 0;
-        for(int j=0; j<d; j++) {
-            cth += (x((i+1)*d+j) - x(i*d+j)) * (x((i+2)*d+j) - x((i+1)*d+j));
-            d1 += (x((i+1)*d+j) - x(i*d+j)) * (x((i+1)*d+j) - x(i*d+j));
-            d2 += (x((i+2)*d+j) - x((i+1)*d+j)) * (x((i+2)*d+j) - x((i+1)*d+j));
-        }
-        cth = cth / (sqrt(d1)*sqrt(d2));  // should be cos(theta_i)
-        U += springconst * (1-cth);
-    }
-    return U;
-}
 
 
 

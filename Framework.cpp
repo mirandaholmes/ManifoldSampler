@@ -13,12 +13,12 @@
 
 // Constructor #1: with lengths
 Framework::Framework(int n0, int d0, MatrixXi& pairs0, VectorXd& lengths0)
-: n(n0), d(d0), pairs(pairs0), lengths(lengths0), m(pairs0.rows()) {
+: n(n0), d(d0), pairs(pairs0), lengths(lengths0), m(pairs0.rows()), nvars(n0*d0) {
 }
 
 // Constructor #2: no lengths; initialize lengths to 0
 Framework::Framework(int n0, int d0, MatrixXi& pairs0)
-: n(n0), d(d0), pairs(pairs0), m(pairs0.rows()) {
+: n(n0), d(d0), pairs(pairs0), m(pairs0.rows()), nvars(n0*d0) {
     lengths = VectorXd::Zero(m);
 }
 
@@ -81,3 +81,5 @@ void Framework::eval_Dq(const VectorXd& x, SpMat& Dq) {
     Dq.resize(d*n,m);
     Dq.setFromTriplets(tripletList.begin(), tripletList.end());
 }
+
+
