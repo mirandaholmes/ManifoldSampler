@@ -62,7 +62,7 @@ public:
     // Total number of points
     int npts(void) { return project + metropolis + revproj + revval + ineq + acc;};
     // Reset rejections
-    void reset(void) { project=0; metropolis=0; revproj=0; revval=0; ineq=0;};
+    void reset(void) { project=0; ineq=0; metropolis=0; revproj=0; revval=0; acc=0;};
 
     // Write to screen
     void print(void);
