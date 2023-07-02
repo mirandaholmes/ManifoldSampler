@@ -12,13 +12,10 @@ Code to plot the output is in the Data/ folder.
 To compile this code, you will need to first install the Eigen library and add it to your compiler path. 
 Eigen can be downloaded here: 
 https://eigen.tuxfamily.org/index.php?title=Main_Page. 
-
-It is recommended to compile with option -O3 for optimal efficiency. 
-A makefile is included, but note that it includes more files than are strictly necessary, because it is set up to 
+It is recommended to compile with option -O3 for optimal efficiency. A makefile is included, but note that it includes more files than are strictly necessary, because it is set up to 
 handle many examples. 
 
-The examples described in the paper are found in codes in the Paper/ folder. 
-Each example can each be run using code
+The examples described in the paper are found in codes in the Paper/ folder. Each example can each be run using code
 * examples_paper.cpp
 To run a given example, make sure to set "typedef T" (lines 33-36) to the desired example, 
 and set "int example=" to the corresponding integer (line 47). 
