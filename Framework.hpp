@@ -1,6 +1,8 @@
 //
 //  Framework.hpp
 //  
+// This class constructs the equations defining a framework. 
+// Each equation fixes the length of an edge between a pair of vertices. 
 //
 //  Created by Miranda Holmes-Cerfon on June 16, 2022.
 //
