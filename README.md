@@ -17,6 +17,7 @@ handle many examples.
 
 The examples described in the paper are found in codes in the PaperCodes/ folder. Each example can each be run using code
 * examples_paper.cpp
+  
 To run a given example, make sure to set "typedef T" (lines 33-36) to the desired example, 
 and set "int example=" to the corresponding integer (line 47). 
 
