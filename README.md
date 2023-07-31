@@ -2,11 +2,11 @@
 This code implements a Markov Chain Monte Carlo algorithm to sample a probability distribution on a manifold
 in a numerically efficient way. The manifold is defined by the level set of constraint functions: 
 $$q(x)=0,$$
-where $q:\mathbb{R}^n\to \mathbb{R}^m$, with $m < n$. The probability distribution to be sampled has the form
-$$\pi(x) \propto f(x) |\nabla q|^{-1}\mu $$
-(if the constraints are imposed by $\delta$-functions), where $\mu$ is the natural Hausdorff measure on the manifold, or 
+where $q:\mathbb{R}^n\to \mathbb{R}^m$, with $m < n$. The probability distribution to be sampled has the default form
+$$\pi(x) \propto f(x) |\nabla q|^{-1}\mu $,$
+where $\mu$ is the natural Hausdorff measure on the manifold. This assumes the constraints are so-called "soft" constraints, that are imposed by delta-functions as $\pi(x) = \prod_{i=1}^m f(x)\delta(q_i(x))$. It is also possible to sample "hard" constraints, that are imposed directly, so the probability distribution has the form
 $$\pi(x) \propto f(x) \mu $$
-if the constraints are so-called "hard" constraints, that are imposed directly. (For the latter, be sure to set `ifqdet=cNo` in the ManifoldSampler class.)
+For this option, be sure to set `ifqdet=cNo` in the ManifoldSampler class.
 
 The algorithm is described in [insert ref]. 
 
