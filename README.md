@@ -4,7 +4,9 @@ in a numerically efficient way. The manifold is defined by the level set of cons
 $$q(x)=0,$$
 where $q:\mathbb{R}^n\to \mathbb{R}^m$, with $m < n$. The probability distribution to be sampled has the default form (`ifqdet=cYes`)
 $$\pi(x) \propto f(x) |\nabla q|^{-1}\mu ,$$
-where $\mu$ is the natural Hausdorff measure on the manifold. This assumes the constraints are so-called "soft" constraints, that are imposed by delta-functions as $\pi(x) \propto f(x)\Pi_{i=1}^m \delta(q_i(x))$. It is also possible to sample "hard" constraints, that are imposed directly, so the probability distribution has the form
+where $\mu$ is the natural Hausdorff measure on the manifold, and $|\nabla q|^{-1}$ is the pseudodeterminant of the Jacobian of the constraints. 
+This is the natural measure that arises when one considers physically-based sampling problems where constraints are 
+approximations for stiff forces, so one needs so-called "soft" constraints, imposed by delta-functions: $\pi(x) \propto f(x)\Pi_{i=1}^m \delta(q_i(x))$. It is also possible to sample "hard" constraints, that are imposed directly. In this case you don't need the pseudodeterminant factor so the probability distribution has the form
 $$\pi(x) \propto f(x) \mu .$$
 For this option, be sure to set `ifqdet=cNo` in the ManifoldSampler class.
 
@@ -43,6 +45,7 @@ The heart of the algorithm is in the ManifoldSampler class.
 
 ManifoldSampler must be constructed with an Equations object, an initial condition, and a step size parameter. 
 All other parameters are optional and may be changed directly in main{}. 
+The optional function $f(x)$ is a function of type EnergyFcn, which can be written above main{} of in the Equations class; by default $f(x)=1$. 
 The initial condition can be set in main{}, or, it can be 
 constructed in a separate class file (as in option 3 below). 
 
@@ -56,10 +59,3 @@ to construct several examples in the same folder.)
 to this class's functions in main{}. All examples included do this: example2.cpp creates a new class directly above main{}, 
 which other examples (example1.cpp, examples_paper.cpp, and all the run_[example].cpp files) have a separate class file, 
 for readability. 
-
-By default, the sampler samples a density with respect to the Hausdorff measure on the manifold which has  the form 
-    $$\pi(x) \propto f(x) |\nabla q|^{-1},$$ 
-where $f(x)$ is a function of type EnergyFcn, and $|\nabla q|^{-1}$ is the pseudodeterminant of the Jacobian of the constraints. 
-This is the natural measure that arises when one considers physically-based sampling problems where constraints are 
-approximations for stiff forces. If your constraints are so-called "hard" constraints, that don't come from delta-functions, 
-then you don't need this pseudodeterminant factor. In this case, set `ifqdet=cNo` in ManifoldSampler.hpp. 
